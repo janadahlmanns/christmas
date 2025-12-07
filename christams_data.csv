@@ -1,5 +1,35 @@
-Fragebogen;q01_coffee;q02_whisper;q03_pipette_moral_crime;q04_suspicious_first_try;q05_bottom_50_readers;q06_enjoy_labeling;q07_crash_response;q08_superstition;q09_punch_water_bath;q10_reason_failed;q11_nemesis;q12_tabs_open;q13_pretend_understand;q14_lids_orientation;q14_why;q15_words_often;q16_reindeer_ethics;q17_bathroom_back_3rd;q17_bathroom_front_3rd;q17_bathroom_old_2nd;q17_bathroom_new_2nd;q17_bathroom_1st;q18_true_center;q19_like_about_institute;q20_snacks_at_desk;q21_quick_meeting_expect
-1;2;5;3;3;1;1;1;winter cell culture voodoo;1;1;western blot;2;1;1;germs on surface;quick;1;2;1;3;1;1;1;colleagues;1;1
-2;0;3;2;1;4;3;2;no experiments on Friday 13th;1;1;photometer;5;3;2;germs in the air;I need coffee;2;5;2;4;3;0;2;christmas party;1;4
-3;1;4;4;2;5;5;3;pray before work;2;1;cell culture;20;2;1;taught like this;oh well;2;1;3;2;5;2;2;abwechslung;2;2
-4;4;1;1;5;2;2;4;first try never works;2;2;computer;5;3;1;dont know;let's do this again;1;3;4;1;5;2;3;nothing;2;3
+Fragebogen;q01_coffee;q02_whisper;q03_pipette_moral_crime;q04_suspicious_first_try;q05_bottom_50_readers;q06_enjoy_labeling;q07_crash_response;q08_superstition;q09_punch_water_bath;q10_reason_failed;q11_nemesis;q12_tabs_open;q13_pretend_understand;q14_lids_orientation;q14_why;q15_words_often;q16_reindeer_ethics;q17_bathroom_back_3rd;q17_bathroom_front_3rd;q17_bathroom_old_2nd;q17_bathroom_new_2nd;q17_bathroom_1st;q18_true_center;q19_like_about_institute;q20_snacks_at_desk;q21_quick_meeting_expect;notes
+1;1.5;5;5;4;4;3;1;you are never truly alone in the lab …;2;1;pymol / alpha fold;5;1;2;habit;Oh come on!;1;4;3;3;5;2;3;Die Leute;2;4;q7 30 min!
+2;3.5;4;5;5;2;4;2;Substanzen dürfen niemals gegen den Uhrzeigersinn in die Petrischale gegeben werden!;2;2;Perfusioin am Patch Clamp Setup;100;3;1;Damit böse Geister abdampfen können;;2;5;4;5;;1;1;Die unerschöpflichen Kaffeevorräte;2;3;q20 und wenn, würde ich es nicht verraten
+3;0;5;5;5;5;5;4;;1;2;DAPI staining;10;1;1;air is clean inside the hood, surface might not be;real quick;1;2;4;3;4;1;3;colleagues & helping between research groups;1;2;q20 big time!
+4;2;4;2;3;1;3;4;;2;1;keine;5;2;2;;Hallo;2;;;;;;;;;;
+5;3;5;5;2;4;5;4;Dass jeder Versuch ein verwendbares Ergebnis bringt;2;2;Konzentrationsberechnungen;3.5;1;1;Erdanziehung? Gewohnheit?;Cups, Hallo, How are you;2;2;3;4;4;0;1;gegenseitige Unterstützung, Austausch, Hilfe wenn man sie braucht;1;2;"q3 ""geht gar nicht"", q16 - Tiere zu groß und zu intelligent"
+6;1.5;4;5;1;5;1;4;Ach, füllt sich der Vorrat nicht von alleine auf?!;1;1;keine;7.5;2;2;unten konnte ich putzen;Danke, bin ich froh, dass du da bist;1;2;4;4;4;1;1;Die Kollegen;1;2;
+7;0;4;5;5;3;2;2;;2;2;restriction cloning;10;1;2;Birgit hat es gesagt und Schutz vor Tropfen beim Arbeiten, die im Deckel landen;fly;2;;4;2;4;2;3;Schlossgarten für Pausenspaziergang;2;3;
+8;1;5;5;2;5;3;4;;1;3;confocal;5;3;1;nach unten einfach ewww, wer weiß, wann der Tisch zuletzt geputzt wurde;Mäuse;2;;3;2;3;1;4;Weihnachtsfeier;2;3;"q18 - bei Uwe; q17 kennt neue Toilette nicht"
+9;2;4;5;4;5;1;3;Some pipettes don't work accurately, always using the same ones;1;2;trypan blue;5;1;1;less contamination when opening is not touching the bench table;;1;3;4;;;1;1;"kleines Institut; man kennt alle hier; die Menschen";1;3;"q1 undecided on coffee amount; q17 - kennt neue Toilette nicht"
+10;3;4;1;4;4;4;4;It works only when you act like you don't care if it works.;1;2;adult fly brain preparation;8;3;3;can't get this one wrong!;I'm going to CESAR' / 'I'm going to physology';1;4;3;4;5;3;1;"calling ""Uweeee!!""";1;3;"q3 ""It's a display of dominance!"""
+11;2;4;5;2;3;2;3;Ein Experiment, dass beim ersten Mal klappt, ist nicht reproduzierbar. ;1;2;;15;3;1;Anreicherung von oben statt unten;lunch;2;2;2;3;5;2;1;die KollegInnen;1;3;
+12;1.5;5;3;2;5;3;1;wenn man nicht hinguckt wird's gut;1;1;waage;2.5;3;1;Innenseite könnte ja schmutzig werden;Antwort, set-up;1;2;4;;;1;1;netter Umgang, entspanntes Arbeitsumfeld;1;3;q7 eines nach dem anderen
+12;;;;;;;2;;;;;;;;;;;;;;;;;;;;
+12;;;;;;;3;;;;;;;;;;;;;;;;;;;;
+13;2;1;5;2;;1;2;;1;1;alles Molekularbiologische insgesamt;10;2;2;wenn dann soll nix reinfallen;;1;4;2;2;2;0;1;"meeting new / young people; talented people";2;2;q7 aus dem Fenster schmeißen
+14;0;1;5;3;4;2;3;Bei Ableitungen hört der Geheimdienst mit;2;2;Injektor;5;1;1;Verschmutzungen vermeiden;sch*** mmh;2;1;3;4;4;2;1;Kaffeepausen;1;3;
+15;1.5;4;5;4;5;3;2;;2;3;;8;3;1;8th grade school chemistry;Aaach, it does not look good!;2;1;4;3;5;1;3;being among smart people;2;3;
+16;3;5;4;5;4;1;2;Alufolie um alles elektrische = weniger Noise;2;2;Western Blots;50;1;2;Alles was drauf fallen könnte, ist dann außen;Kannst du kurz mal …;2;2;3;4;5;2;1;Neue Dinge herausfinden, umgeben von coolen Menschen;1;3;
+17;1.5;3;4;1;2;1;3;;2;2;;1;2;1;keep clean;wow;2;3;3;;;2;1;Freiheit;2;1;
+18;1;5;4;5;5;4;1;;2;1;data processing;30;3;;;LFP, LH;2;1;5;4;;4;1;it's quiet and there is coffee;1;1;q7 both
+18;;;;;;;2;;;;;;;;;;;;;;;;;;;;
+19;0;5;4;2;5;4;1;Everything (the experiment) will work out in the end.;2;1;vaccuum filtration pump;32;1;1;;results;2;3;4;;;1;1;The people and my mouse strain;1;3;q1 - afternoon coffee,q7 all of them, q14 zellkultur vs außerhalb, q17 EG smells bad
+19;;;;;;;2;;;;;;;2;darunter desinfizieren & dann kann nichts reinfallen;;;;;;;;;;;;
+19;;;;;;;3;;;;;;;;;;;;;;;;;;;;
+19;;;;;;;4;;;;;;;;;;;;;;;;;;;;
+20;1;5;4;4;5;3;1;I'm too young for this question;2;1;reading papers;7.5;3;1;;LFP, LH, that's fair, actually, I don't know;2;2;2;;;;1;my view from desk;1;3;q7 all of them
+20;;;;;;;2;;;;;;;;;;;;;;;;;;;;
+20;;;;;;;3;;;;;;;;;;;;;;;;;;;;
+20;;;;;;;4;;;;;;;;;;;;;;;;;;;;
+21;1;3;4;4;3;2;4;;1;2;keinen;5;1;1;;;2;;;;;;;;;;
+22;2;5;2;3;1;3;4;wird schon;2;1;computer;5;3;;;unglaublich;2;1;1;3;3;1;1;einige Kollegen;2;1;
+23;3;1;2;4;4;1;2;;1;2;alles mit Molekularbiologie;15;2;;;whatever works;2;;5;;;5;1;;2;1;q 19 empty
+24;0;5;3;5;5;5;2;wearing superhero underpants brings experiment success;2;4;Patch Clamp Rack;50;3;2;obvious reasons;ACSF;2;1;5;4;;2;4;Kuchen;1;4;
+25;0;4;5;5;4;1;4;;1;1;Patch Clamp Einzelkanäle;10;1;2;sonst kann theoretisch was von oben reinfallen;"PI: ""Was du machen kannst,….endlose Liste""";2;;4;5;4;1;1;Die vielen netten Leute;2;4;

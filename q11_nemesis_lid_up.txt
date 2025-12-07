@@ -1,3 +1,10 @@
-western blot
-cell culture
-computer
+Perfusioin am Patch Clamp Setup
+DAPI staining
+Konzentrationsberechnungen
+confocal
+trypan blue
+waage
+Injektor
+vaccuum filtration pump
+reading papers
+keinen

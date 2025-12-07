@@ -1,2 +1,10 @@
-western blot
-photometer
+DAPI staining
+keine
+confocal
+trypan blue
+adult fly brain preparation
+waage
+alles Molekularbiologische insgesamt
+keinen
+alles mit Molekularbiologie
+Patch Clamp Einzelkanäle

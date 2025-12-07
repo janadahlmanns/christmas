@@ -1,4 +1,22 @@
-western blot
-photometer
-cell culture
+pymol / alpha fold
+Perfusioin am Patch Clamp Setup
+DAPI staining
+keine
+Konzentrationsberechnungen
+keine
+restriction cloning
+confocal
+trypan blue
+adult fly brain preparation
+waage
+alles Molekularbiologische insgesamt
+Injektor
+Western Blots
+data processing
+vaccuum filtration pump
+reading papers
+keinen
 computer
+alles mit Molekularbiologie
+Patch Clamp Rack
+Patch Clamp Einzelkanäle

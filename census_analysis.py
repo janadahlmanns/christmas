@@ -8,7 +8,7 @@ plt.xkcd()
 ID_COL = "Fragebogen"  # questionnaire ID column
 
 # Load data
-df = pd.read_csv("christams_data.csv", sep=";")
+df = pd.read_csv("christams_data.csv", sep=";", encoding="latin1")
 
 # ============================================================
 #  GROUP STYLING CONFIGURATION
