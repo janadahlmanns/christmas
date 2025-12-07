@@ -59,9 +59,7 @@ for lid in lid_down_ids:
     marker_styles[lid]["marker"] = "v"   # downward triangle
 
 
-# ============================================================
-#  TYPE 1: NUMERIC + NORMAL FIT + JITTER DOTS
-# ============================================================
+# ---------- TYPE 1: NUMERIC + NORMAL FIT + JITTER DOTS ----------
 
 def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=None):
     # Use only rows that have BOTH ID and this value
@@ -160,9 +158,7 @@ def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=Non
     plt.show()
 
 
-# ============================================================
-#  TYPE 2: LIKERT (AGREEMENT SCALE) + JITTER DOTS
-# ============================================================
+# ---------- TYPE 2: LIKERT (AGREEMENT SCALE) + JITTER DOTS ----------
 
 LIKERT_LABELS = {
     1: "Strongly\ndisagree",
@@ -265,10 +261,7 @@ def plot_likert(df, col, title, filename=None, as_percent=True):
     plt.show()
 
 
-# ============================================================
-#  TYPE 3: SINGLE CHOICE (1..N coded) + JITTER DOTS
-#  (unchanged, still assumes categories 1..max)
-# ============================================================
+# ---------- TYPE 3: SINGLE CHOICE (1..N coded) + JITTER DOTS ----------
 
 def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=True):
     """
@@ -378,9 +371,7 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     plt.show()
 
 
-# ============================================================
-#  Q14b: SPLIT TEXT REASONS + TRIBES
-# ============================================================
+# ---------- Q14b: SPLIT TEXT REASONS + TRIBES ----------
 
 def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why"):
     if orientation_col not in df.columns or reason_col not in df.columns:
@@ -419,17 +410,23 @@ def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q
     # ----- subgroup helper -----
     def export_subset(name, id_list, orientation_value, filename):
         if id_list is None or len(id_list) == 0:
+            # still create file with "no answers"
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("no answers\n")
             return
+
         id_mask = df[ID_COL].astype(str).isin(id_list)
         mask = id_mask & (orient == orientation_value)
         subset = df.loc[mask, reason_col].dropna().astype(str).str.strip()
         subset = subset[subset != ""]
         print(f"\n=== {name} ===")
-        for r in subset:
-            print("-", r)
         with open(filename, "w", encoding="utf-8") as f:
-            for r in subset:
-                f.write(r + "\n")
+            if subset.empty:
+                f.write("no answers\n")
+            else:
+                for r in subset:
+                    print("-", r)
+                    f.write(r + "\n")
 
     # rouges
     export_subset(
@@ -460,73 +457,49 @@ def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q
     )
 
 
-# ============================================================
-#  SPECIAL: BATHROOM RATING PLOTS (0–5) WITH THEIR OWN LOGIC
-# ============================================================
+# ---------- BATHROOM PLOTS (separate plotting) ----------
 
-def plot_bathroom_dist(df, col, title, filename=None):
-    """
-    Plot bathroom ratings as 0–5 stars with their own bins & jitter logic.
-    Does NOT use plot_single_choice, so single-choice behavior stays unchanged.
-    """
+def plot_bathroom(df, col, title, filename=None):
+    # treat ratings as 0–5, but DO NOT change the general single-choice behavior
     sub = df[[ID_COL, col]].dropna()
     if sub.empty:
         print(f"No data for {col}")
         return
 
     ids = sub[ID_COL].astype(str).values
-    values = pd.to_numeric(sub[col], errors="coerce").dropna().astype(int).values
+    values = pd.to_numeric(sub[col], errors="coerce").fillna(0).astype(int).values
 
-    # Full rating range 0..5
-    full_range = [0, 1, 2, 3, 4, 5]
-
+    # categories 0..5
+    full_range = list(range(0, 6))
     counts = pd.Series(values).value_counts()
     counts = counts.reindex(full_range, fill_value=0)
 
     total = counts.sum()
     if total == 0:
-        print(f"No valid bathroom ratings for {col}")
+        print(f"No valid ratings for {col}")
         return
 
-    counts_plot = counts
+    counts_plot = counts  # absolute counts
     ylabel = "Number of ratings"
 
-    # Bar positions: 0..5
     x = np.arange(len(full_range))
 
     plt.figure(figsize=(7, 4))
     plt.bar(x, counts_plot.values, edgecolor="black", alpha=0.8)
 
-    option_labels = {
-        0: "0",
-        1: "*",
-        2: "**",
-        3: "***",
-        4: "****",
-        5: "*****",
-    }
-    tick_labels = [option_labels.get(code, str(code)) for code in full_range]
+    tick_labels = ["0", "*", "**", "***", "****", "*****"]
     plt.xticks(x, tick_labels)
 
-    # Jitter dots on top
+    # Jittered dots
     max_height = counts_plot.max() if len(counts_plot) > 0 else 1
     y_j_min = 0.1 * max_height
     y_j_max = 0.9 * max_height
 
-    code_to_index = {code: i for i, code in enumerate(full_range)}
-
     x_jitter = []
     y_jitter = []
 
-    # we need ids + values again with same length
-    ids_for_vals = sub[ID_COL].astype(str).values
-    vals_for_jitter = pd.to_numeric(sub[col], errors="coerce").astype("Int64")
-    mask_valid = vals_for_jitter.notna()
-    ids_for_vals = ids_for_vals[mask_valid.values]
-    vals_for_jitter = vals_for_jitter[mask_valid].astype(int).values
-
-    for v, id_ in zip(vals_for_jitter, ids_for_vals):
-        x_center = code_to_index.get(v, 0)
+    for v, id_ in zip(values, ids):
+        x_center = v  # 0..5
         x_val = x_center + np.random.uniform(-0.15, 0.15)
         y_val = np.random.uniform(y_j_min, y_j_max)
         x_jitter.append(x_val)
@@ -536,13 +509,13 @@ def plot_bathroom_dist(df, col, title, filename=None):
     y_jitter = np.array(y_jitter)
 
     facecolors = np.array(
-        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids_for_vals]
+        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids]
     )
     edgecolors = np.array(
-        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids_for_vals]
+        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids]
     )
     markers = np.array(
-        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids_for_vals]
+        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids]
     )
 
     up_mask_m = (markers == "^")
@@ -570,7 +543,7 @@ def plot_bathroom_dist(df, col, title, filename=None):
             zorder=3,
         )
 
-    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids_for_vals):
+    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids):
         plt.text(x_val, y_val, id_, fontsize=6, ha="center", va="center", zorder=4)
 
     plt.ylabel(ylabel)
@@ -583,9 +556,49 @@ def plot_bathroom_dist(df, col, title, filename=None):
     plt.show()
 
 
-# ============================================================
-#  RUN ANALYSES: PLOTS
-# ============================================================
+# ---------- GENERIC FREE-TEXT EXPORT (ALL + TRIBES) ----------
+
+def export_text_answers(df, col):
+    """
+    For a free-text column `col`, create 5 files:
+      col_all.txt
+      col_rouge.txt
+      col_brave.txt
+      col_lid_up.txt
+      col_lid_down.txt
+
+    If a subset has no answers, the file is still created with line 'no answers'.
+    """
+    def write_subset(ids_subset, suffix):
+        if ids_subset is None:
+            mask = df[col].notna()
+        else:
+            mask = df[ID_COL].astype(str).isin(ids_subset) & df[col].notna()
+
+        subset = df.loc[mask, col].astype(str).str.strip()
+        subset = subset[subset != ""]
+
+        fname = f"{col}{suffix}.txt"
+        with open(fname, "w", encoding="utf-8") as f:
+            if subset.empty:
+                f.write("no answers\n")
+            else:
+                for ans in subset:
+                    f.write(ans + "\n")
+
+    # 1) all answers
+    write_subset(ids_subset=None,           suffix="_all")
+    # 2) rouges
+    write_subset(ids_subset=list(rouge_ids), suffix="_rouge")
+    # 3) punch drinkers (braves)
+    write_subset(ids_subset=list(brave_ids), suffix="_brave")
+    # 4) lid upwards
+    write_subset(ids_subset=list(lid_up_ids), suffix="_lid_up")
+    # 5) lid downwards
+    write_subset(ids_subset=list(lid_down_ids), suffix="_lid_down")
+
+
+# ---------- RUN ANALYSES: PLOTS ----------
 
 # Q1: coffees / teas (numeric)
 plot_numeric_with_normal(
@@ -643,7 +656,7 @@ plot_likert(
     filename="q06_labeling.png",
 )
 
-# SINGLE CHOICE (unchanged)
+# SINGLE CHOICE
 plot_single_choice(
     df,
     col="q07_crash_response",
@@ -743,9 +756,7 @@ plot_single_choice(
 export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why")
 
 
-# ============================================================
-#  Q17: Bathroom star ratings (EXPORT TO TEXT + TRIBES)
-# ============================================================
+# ---------- Q17: Bathroom star ratings (EXPORT TO TEXT + TRIBES) ----------
 
 def export_bathroom_ratings(df, id_list=None, suffix=""):
     """
@@ -814,39 +825,56 @@ export_bathroom_ratings(df, id_list=list(lid_up_ids), suffix="_lid_up")
 # lids downwards only
 export_bathroom_ratings(df, id_list=list(lid_down_ids), suffix="_lid_down")
 
-# ---------- Q17 Bathrooms: plotted with dedicated 0–5 logic ----------
+# ---------- Q17 Bathrooms: plotted as rating distributions ----------
 
-plot_bathroom_dist(
+plot_bathroom(
     df,
     col="q17_bathroom_back_3rd",
     title="Bathroom rating: Back building, 3rd floor (Q17)",
     filename="q17_bathroom_back_3rd.png",
 )
 
-plot_bathroom_dist(
+plot_bathroom(
     df,
     col="q17_bathroom_front_3rd",
     title="Bathroom rating: Front building, 3rd floor (Q17)",
     filename="q17_bathroom_front_3rd.png",
 )
 
-plot_bathroom_dist(
+plot_bathroom(
     df,
     col="q17_bathroom_old_2nd",
     title="Bathroom rating: Old building, 2nd floor (Q17)",
     filename="q17_bathroom_old_2nd.png",
 )
 
-plot_bathroom_dist(
+plot_bathroom(
     df,
     col="q17_bathroom_new_2nd",
     title="Bathroom rating: New building, 2nd floor (Q17)",
     filename="q17_bathroom_new_2nd.png",
 )
 
-plot_bathroom_dist(
+plot_bathroom(
     df,
     col="q17_bathroom_1st",
     title="Bathroom rating: 1st floor (Q17)",
     filename="q17_bathroom_1st.png",
 )
+
+# ---------- FREE-TEXT QUESTIONS: 5 TXT FILES EACH ----------
+
+TEXT_COLS = [
+    "q08_superstition",
+    "q10_reason_failed",
+    "q11_nemesis",
+    "q14_why",
+    "q15_words_often",
+    "q19_like_about_institute",
+]
+
+for col in TEXT_COLS:
+    if col in df.columns:
+        export_text_answers(df, col)
+    else:
+        print(f"Warning: text column {col} not found in dataframe")
