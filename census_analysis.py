@@ -59,7 +59,9 @@ for lid in lid_down_ids:
     marker_styles[lid]["marker"] = "v"   # downward triangle
 
 
-# ---------- TYPE 1: NUMERIC + NORMAL FIT + JITTER DOTS ----------
+# ============================================================
+#  TYPE 1: NUMERIC + NORMAL FIT + JITTER DOTS
+# ============================================================
 
 def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=None):
     # Use only rows that have BOTH ID and this value
@@ -158,7 +160,9 @@ def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=Non
     plt.show()
 
 
-# ---------- TYPE 2: LIKERT (AGREEMENT SCALE) + JITTER DOTS ----------
+# ============================================================
+#  TYPE 2: LIKERT (AGREEMENT SCALE) + JITTER DOTS
+# ============================================================
 
 LIKERT_LABELS = {
     1: "Strongly\ndisagree",
@@ -261,7 +265,10 @@ def plot_likert(df, col, title, filename=None, as_percent=True):
     plt.show()
 
 
-# ---------- TYPE 3: SINGLE CHOICE (1..N coded) + JITTER DOTS ----------
+# ============================================================
+#  TYPE 3: SINGLE CHOICE (1..N coded) + JITTER DOTS
+#  (unchanged, still assumes categories 1..max)
+# ============================================================
 
 def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=True):
     """
@@ -371,7 +378,9 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     plt.show()
 
 
-# ---------- Q14b: SPLIT TEXT REASONS + TRIBES ----------
+# ============================================================
+#  Q14b: SPLIT TEXT REASONS + TRIBES
+# ============================================================
 
 def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why"):
     if orientation_col not in df.columns or reason_col not in df.columns:
@@ -451,26 +460,132 @@ def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q
     )
 
 
-def plot_bathroom(df, col, title, filename=None):
+# ============================================================
+#  SPECIAL: BATHROOM RATING PLOTS (0–5) WITH THEIR OWN LOGIC
+# ============================================================
+
+def plot_bathroom_dist(df, col, title, filename=None):
+    """
+    Plot bathroom ratings as 0–5 stars with their own bins & jitter logic.
+    Does NOT use plot_single_choice, so single-choice behavior stays unchanged.
+    """
+    sub = df[[ID_COL, col]].dropna()
+    if sub.empty:
+        print(f"No data for {col}")
+        return
+
+    ids = sub[ID_COL].astype(str).values
+    values = pd.to_numeric(sub[col], errors="coerce").dropna().astype(int).values
+
+    # Full rating range 0..5
+    full_range = [0, 1, 2, 3, 4, 5]
+
+    counts = pd.Series(values).value_counts()
+    counts = counts.reindex(full_range, fill_value=0)
+
+    total = counts.sum()
+    if total == 0:
+        print(f"No valid bathroom ratings for {col}")
+        return
+
+    counts_plot = counts
+    ylabel = "Number of ratings"
+
+    # Bar positions: 0..5
+    x = np.arange(len(full_range))
+
+    plt.figure(figsize=(7, 4))
+    plt.bar(x, counts_plot.values, edgecolor="black", alpha=0.8)
+
     option_labels = {
+        0: "0",
         1: "*",
         2: "**",
         3: "***",
         4: "****",
         5: "*****",
     }
+    tick_labels = [option_labels.get(code, str(code)) for code in full_range]
+    plt.xticks(x, tick_labels)
 
-    plot_single_choice(
-        df=df,
-        col=col,
-        title=title,
-        option_labels=option_labels,
-        filename=filename,
-        as_percent=False,
+    # Jitter dots on top
+    max_height = counts_plot.max() if len(counts_plot) > 0 else 1
+    y_j_min = 0.1 * max_height
+    y_j_max = 0.9 * max_height
+
+    code_to_index = {code: i for i, code in enumerate(full_range)}
+
+    x_jitter = []
+    y_jitter = []
+
+    # we need ids + values again with same length
+    ids_for_vals = sub[ID_COL].astype(str).values
+    vals_for_jitter = pd.to_numeric(sub[col], errors="coerce").astype("Int64")
+    mask_valid = vals_for_jitter.notna()
+    ids_for_vals = ids_for_vals[mask_valid.values]
+    vals_for_jitter = vals_for_jitter[mask_valid].astype(int).values
+
+    for v, id_ in zip(vals_for_jitter, ids_for_vals):
+        x_center = code_to_index.get(v, 0)
+        x_val = x_center + np.random.uniform(-0.15, 0.15)
+        y_val = np.random.uniform(y_j_min, y_j_max)
+        x_jitter.append(x_val)
+        y_jitter.append(y_val)
+
+    x_jitter = np.array(x_jitter)
+    y_jitter = np.array(y_jitter)
+
+    facecolors = np.array(
+        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids_for_vals]
+    )
+    edgecolors = np.array(
+        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids_for_vals]
+    )
+    markers = np.array(
+        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids_for_vals]
     )
 
+    up_mask_m = (markers == "^")
+    down_mask_m = (markers == "v")
 
-# ---------- RUN ANALYSES: PLOTS ----------
+    if up_mask_m.any():
+        plt.scatter(
+            x_jitter[up_mask_m],
+            y_jitter[up_mask_m],
+            facecolors=facecolors[up_mask_m],
+            edgecolors=edgecolors[up_mask_m],
+            marker="^",
+            s=180,
+            zorder=3,
+        )
+
+    if down_mask_m.any():
+        plt.scatter(
+            x_jitter[down_mask_m],
+            y_jitter[down_mask_m],
+            facecolors=facecolors[down_mask_m],
+            edgecolors=edgecolors[down_mask_m],
+            marker="v",
+            s=180,
+            zorder=3,
+        )
+
+    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids_for_vals):
+        plt.text(x_val, y_val, id_, fontsize=6, ha="center", va="center", zorder=4)
+
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.tight_layout()
+
+    if filename:
+        plt.savefig(filename, dpi=150)
+
+    plt.show()
+
+
+# ============================================================
+#  RUN ANALYSES: PLOTS
+# ============================================================
 
 # Q1: coffees / teas (numeric)
 plot_numeric_with_normal(
@@ -528,7 +643,7 @@ plot_likert(
     filename="q06_labeling.png",
 )
 
-# SINGLE CHOICE
+# SINGLE CHOICE (unchanged)
 plot_single_choice(
     df,
     col="q07_crash_response",
@@ -628,7 +743,9 @@ plot_single_choice(
 export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why")
 
 
-# ---------- Q17: Bathroom star ratings (EXPORT TO TEXT + TRIBES) ----------
+# ============================================================
+#  Q17: Bathroom star ratings (EXPORT TO TEXT + TRIBES)
+# ============================================================
 
 def export_bathroom_ratings(df, id_list=None, suffix=""):
     """
@@ -697,37 +814,37 @@ export_bathroom_ratings(df, id_list=list(lid_up_ids), suffix="_lid_up")
 # lids downwards only
 export_bathroom_ratings(df, id_list=list(lid_down_ids), suffix="_lid_down")
 
-# ---------- Q17 Bathrooms: plotted as single-choice 1–5 ----------
+# ---------- Q17 Bathrooms: plotted with dedicated 0–5 logic ----------
 
-plot_bathroom(
+plot_bathroom_dist(
     df,
     col="q17_bathroom_back_3rd",
     title="Bathroom rating: Back building, 3rd floor (Q17)",
     filename="q17_bathroom_back_3rd.png",
 )
 
-plot_bathroom(
+plot_bathroom_dist(
     df,
     col="q17_bathroom_front_3rd",
     title="Bathroom rating: Front building, 3rd floor (Q17)",
     filename="q17_bathroom_front_3rd.png",
 )
 
-plot_bathroom(
+plot_bathroom_dist(
     df,
     col="q17_bathroom_old_2nd",
     title="Bathroom rating: Old building, 2nd floor (Q17)",
     filename="q17_bathroom_old_2nd.png",
 )
 
-plot_bathroom(
+plot_bathroom_dist(
     df,
     col="q17_bathroom_new_2nd",
     title="Bathroom rating: New building, 2nd floor (Q17)",
     filename="q17_bathroom_new_2nd.png",
 )
 
-plot_bathroom(
+plot_bathroom_dist(
     df,
     col="q17_bathroom_1st",
     title="Bathroom rating: 1st floor (Q17)",
