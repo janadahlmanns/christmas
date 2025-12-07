@@ -1,0 +1,5 @@
+q17_bathroom_back_3rd, 2.00, 3
+q17_bathroom_front_3rd, 2.67, 3
+q17_bathroom_old_2nd, 2.00, 3
+q17_bathroom_new_2nd, 3.67, 3
+q17_bathroom_1st, 1.67, 3

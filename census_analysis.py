@@ -5,17 +5,71 @@ from scipy.stats import norm   # for normal pdf
 
 plt.xkcd()
 
+ID_COL = "Fragebogen"  # questionnaire ID column
+
 # Load data
 df = pd.read_csv("christams_data.csv", sep=";")
 
+# ============================================================
+#  GROUP STYLING CONFIGURATION
+# ============================================================
 
-# ---------- TYPE 1: NUMERIC + NORMAL FIT ----------
+# Default marker styles for each respondent
+# (facecolor + edgecolor + marker; can be overwritten by group definitions)
+marker_styles = {}
+for id_ in df[ID_COL].dropna().astype(str):
+    marker_styles[id_] = {
+        "facecolor": "white",
+        "edgecolor": "black",
+        "marker": "^",   # default: upward triangle
+    }
+
+# ------------------------------------------------------------
+# GROUP 1: "the rouges"
+# pipette moral crime: 1–5, rouges = <= 3
+# ------------------------------------------------------------
+rouge_mask = pd.to_numeric(df["q03_pipette_moral_crime"], errors="coerce") <= 3
+rouge_ids = df.loc[rouge_mask, ID_COL].dropna().astype(str)
+
+for rid in rouge_ids:
+    # Overwrite ONLY the facecolor, keep other properties as-is
+    marker_styles[rid]["facecolor"] = "black"
+
+# ------------------------------------------------------------
+# GROUP 2: "the braves"
+# q09_punch_water_bath == 1 → yes
+# ------------------------------------------------------------
+brave_mask = pd.to_numeric(df["q09_punch_water_bath"], errors="coerce") == 1
+brave_ids = df.loc[brave_mask, ID_COL].dropna().astype(str)
+
+for bid in brave_ids:
+    # Overwrite ONLY the edgecolor, keep other properties as-is
+    marker_styles[bid]["edgecolor"] = "red"
+
+# ------------------------------------------------------------
+# GROUP 3: lids up vs down
+# q14_lids_orientation: 1 = up, 2 = down
+# ------------------------------------------------------------
+orient14 = pd.to_numeric(df["q14_lids_orientation"], errors="coerce")
+
+lid_up_ids = df.loc[orient14 == 1, ID_COL].dropna().astype(str)
+lid_down_ids = df.loc[orient14 == 2, ID_COL].dropna().astype(str)
+
+for lid in lid_down_ids:
+    marker_styles[lid]["marker"] = "v"   # downward triangle
+
+
+# ---------- TYPE 1: NUMERIC + NORMAL FIT + JITTER DOTS ----------
 
 def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=None):
-    values = df[col].dropna().astype(float)
-    if values.empty:
+    # Use only rows that have BOTH ID and this value
+    sub = df[[ID_COL, col]].dropna()
+    if sub.empty:
         print(f"No data for {col}")
         return
+
+    ids = sub[ID_COL].astype(str).values
+    values = sub[col].astype(float).values
 
     # Bins
     min_val = values.min()
@@ -40,6 +94,57 @@ def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=Non
         plt.plot(x, pdf_scaled, color="black", linewidth=2,
                  label=f"Normal fit (μ={mu:.2f}, σ={sigma:.2f})")
 
+    # Overlay jittered dots for each individual
+    max_count = counts.max() if len(counts) > 0 else 1
+    y_j_min = 0.1 * max_count
+    y_j_max = 0.9 * max_count
+
+    x_jitter = values + np.random.uniform(-bin_width * 0.15,
+                                          bin_width * 0.15,
+                                          size=len(values))
+    y_jitter = np.random.uniform(y_j_min, y_j_max, size=len(values))
+
+    # Style per ID
+    facecolors = np.array(
+        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids]
+    )
+    edgecolors = np.array(
+        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids]
+    )
+    markers = np.array(
+        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids]
+    )
+
+    # Split into upward and downward triangles
+    up_mask_m = (markers == "^")
+    down_mask_m = (markers == "v")
+
+    if up_mask_m.any():
+        plt.scatter(
+            x_jitter[up_mask_m],
+            y_jitter[up_mask_m],
+            facecolors=facecolors[up_mask_m],
+            edgecolors=edgecolors[up_mask_m],
+            marker="^",
+            s=180,
+            zorder=3,
+        )
+
+    if down_mask_m.any():
+        plt.scatter(
+            x_jitter[down_mask_m],
+            y_jitter[down_mask_m],
+            facecolors=facecolors[down_mask_m],
+            edgecolors=edgecolors[down_mask_m],
+            marker="v",
+            s=180,
+            zorder=3,
+        )
+
+    # Label each dot with Fragebogen ID (for exploration)
+    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids):
+        plt.text(x_val, y_val, id_, fontsize=6, ha="center", va="center", zorder=4)
+
     plt.xticks(bins)
     plt.xlabel(xlabel)
     plt.ylabel("Number of people")
@@ -53,7 +158,7 @@ def plot_numeric_with_normal(df, col, xlabel, title, bin_width=0.5, filename=Non
     plt.show()
 
 
-# ---------- TYPE 2: LIKERT (AGREEMENT SCALE) ----------
+# ---------- TYPE 2: LIKERT (AGREEMENT SCALE) + JITTER DOTS ----------
 
 LIKERT_LABELS = {
     1: "Strongly\ndisagree",
@@ -64,29 +169,87 @@ LIKERT_LABELS = {
 }
 
 def plot_likert(df, col, title, filename=None, as_percent=True):
-    values = df[col].dropna().astype(int)
-    if values.empty:
+    sub = df[[ID_COL, col]].dropna()
+    if sub.empty:
         print(f"No data for {col}")
         return
 
-    # Count responses per category 1–5
-    counts = values.value_counts().sort_index()
+    ids = sub[ID_COL].astype(str).values
+    values = sub[col].astype(int).values
+
+    counts = pd.Series(values).value_counts().sort_index()
     index = pd.Index([1, 2, 3, 4, 5])
     counts = counts.reindex(index, fill_value=0)
 
     if as_percent:
-        counts = counts / counts.sum() * 100
+        counts_plot = counts / counts.sum() * 100
         ylabel = "Percentage of people"
     else:
+        counts_plot = counts
         ylabel = "Number of people"
 
     x = np.arange(1, 6)
 
     plt.figure(figsize=(7, 4))
-    plt.bar(x, counts.values, edgecolor="black", alpha=0.8)
+    plt.bar(x, counts_plot.values, edgecolor="black", alpha=0.8)
 
     labels = [LIKERT_LABELS[i] for i in x]
     plt.xticks(x, labels)
+
+    # Overlay jittered dots
+    max_height = counts_plot.max() if len(counts_plot) > 0 else 1
+    y_j_min = 0.1 * max_height
+    y_j_max = 0.9 * max_height
+
+    x_jitter = []
+    y_jitter = []
+
+    for v, id_ in zip(values, ids):
+        x_val = v + np.random.uniform(-0.15, 0.15)
+        y_val = np.random.uniform(y_j_min, y_j_max)
+        x_jitter.append(x_val)
+        y_jitter.append(y_val)
+
+    x_jitter = np.array(x_jitter)
+    y_jitter = np.array(y_jitter)
+
+    facecolors = np.array(
+        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids]
+    )
+    edgecolors = np.array(
+        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids]
+    )
+    markers = np.array(
+        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids]
+    )
+
+    up_mask_m = (markers == "^")
+    down_mask_m = (markers == "v")
+
+    if up_mask_m.any():
+        plt.scatter(
+            x_jitter[up_mask_m],
+            y_jitter[up_mask_m],
+            facecolors=facecolors[up_mask_m],
+            edgecolors=edgecolors[up_mask_m],
+            marker="^",
+            s=180,
+            zorder=3,
+        )
+
+    if down_mask_m.any():
+        plt.scatter(
+            x_jitter[down_mask_m],
+            y_jitter[down_mask_m],
+            facecolors=facecolors[down_mask_m],
+            edgecolors=edgecolors[down_mask_m],
+            marker="v",
+            s=180,
+            zorder=3,
+        )
+
+    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids):
+        plt.text(x_val, y_val, id_, fontsize=6, ha="center", va="center", zorder=4)
 
     plt.ylabel(ylabel)
     plt.title(title)
@@ -98,7 +261,7 @@ def plot_likert(df, col, title, filename=None, as_percent=True):
     plt.show()
 
 
-# ---------- TYPE 3: SINGLE CHOICE (1..N coded) ----------
+# ---------- TYPE 3: SINGLE CHOICE (1..N coded) + JITTER DOTS ----------
 
 def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=True):
     """
@@ -106,21 +269,20 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     col: column name in df (values encoded as 1..N integers)
     title: plot title
     option_labels: dict mapping int -> label
-                   e.g. {1: "Panic & pray", 2: "Stare 30 s", ...}
-                   keys define the category range and order.
     """
-    values = df[col].dropna().astype(int)
-    if values.empty:
+    sub = df[[ID_COL, col]].dropna()
+    if sub.empty:
         print(f"No data for {col}")
         return
 
-    # Categories are 1..max_key, even if some weren't chosen
+    ids = sub[ID_COL].astype(str).values
+    values = sub[col].astype(int).values
+
     categories = sorted(option_labels.keys())
     max_cat = max(categories)
     full_range = list(range(1, max_cat + 1))
 
-    # Count occurrences and ensure all categories exist
-    counts = values.value_counts()
+    counts = pd.Series(values).value_counts()
     counts = counts.reindex(full_range, fill_value=0)
 
     total = counts.sum()
@@ -140,9 +302,64 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     plt.figure(figsize=(7, 4))
     plt.bar(x, counts_plot.values, edgecolor="black", alpha=0.8)
 
-    # Use labels from option_labels; if something is missing, fall back to the number
     tick_labels = [option_labels.get(cat, str(cat)) for cat in full_range]
     plt.xticks(x, tick_labels)
+
+    # Overlay jittered dots
+    max_height = counts_plot.max() if len(counts_plot) > 0 else 1
+    y_j_min = 0.1 * max_height
+    y_j_max = 0.9 * max_height
+
+    x_jitter = []
+    y_jitter = []
+
+    for v, id_ in zip(values, ids):
+        x_center = (v - 1)
+        x_val = x_center + np.random.uniform(-0.15, 0.15)
+        y_val = np.random.uniform(y_j_min, y_j_max)
+        x_jitter.append(x_val)
+        y_jitter.append(y_val)
+
+    x_jitter = np.array(x_jitter)
+    y_jitter = np.array(y_jitter)
+
+    facecolors = np.array(
+        [marker_styles.get(id_, {}).get("facecolor", "white") for id_ in ids]
+    )
+    edgecolors = np.array(
+        [marker_styles.get(id_, {}).get("edgecolor", "black") for id_ in ids]
+    )
+    markers = np.array(
+        [marker_styles.get(id_, {}).get("marker", "^") for id_ in ids]
+    )
+
+    up_mask_m = (markers == "^")
+    down_mask_m = (markers == "v")
+
+    if up_mask_m.any():
+        plt.scatter(
+            x_jitter[up_mask_m],
+            y_jitter[up_mask_m],
+            facecolors=facecolors[up_mask_m],
+            edgecolors=edgecolors[up_mask_m],
+            marker="^",
+            s=180,
+            zorder=3,
+        )
+
+    if down_mask_m.any():
+        plt.scatter(
+            x_jitter[down_mask_m],
+            y_jitter[down_mask_m],
+            facecolors=facecolors[down_mask_m],
+            edgecolors=edgecolors[down_mask_m],
+            marker="v",
+            s=180,
+            zorder=3,
+        )
+
+    for x_val, y_val, id_ in zip(x_jitter, y_jitter, ids):
+        plt.text(x_val, y_val, id_, fontsize=6, ha="center", va="center", zorder=4)
 
     plt.ylabel(ylabel)
     plt.title(title)
@@ -154,36 +371,24 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     plt.show()
 
 
-# ---------- Q14b: SPLIT TEXT REASONS BY ORIENTATION ----------
+# ---------- Q14b: SPLIT TEXT REASONS + TRIBES ----------
 
 def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why"):
-    """
-    Splits Q14 'Why?' answers into two lists:
-    - orientation == 1 -> upwards reasons
-    - orientation == 2 -> downwards reasons
-
-    Prints them to the console and also writes two text files:
-    - q14_upwards_reasons.txt
-    - q14_downwards_reasons.txt
-    """
     if orientation_col not in df.columns or reason_col not in df.columns:
         print("Q14 columns not found in dataframe.")
         return
 
-    # Make sure orientation is numeric
     orient = pd.to_numeric(df[orientation_col], errors="coerce")
 
-    # Upwards = 1
+    # ----- original global outputs -----
     up_mask = orient == 1
     upwards_reasons = df.loc[up_mask, reason_col].dropna().astype(str).str.strip()
     upwards_reasons = upwards_reasons[upwards_reasons != ""]
 
-    # Downwards = 2
     down_mask = orient == 2
     downwards_reasons = df.loc[down_mask, reason_col].dropna().astype(str).str.strip()
     downwards_reasons = downwards_reasons[downwards_reasons != ""]
 
-    # Print to console for easy copy-paste
     print("\n=== Q14b: Reasons for opening UPWARDS (orientation == 1) ===")
     for r in upwards_reasons:
         print("-", r)
@@ -192,7 +397,6 @@ def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q
     for r in downwards_reasons:
         print("-", r)
 
-    # Also write to text files (optional but handy)
     with open("q14_upwards_reasons.txt", "w", encoding="utf-8") as f:
         for r in upwards_reasons:
             f.write(r + "\n")
@@ -203,8 +407,70 @@ def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q
 
     print("\nQ14b reasons exported to q14_upwards_reasons.txt and q14_downwards_reasons.txt")
 
+    # ----- subgroup helper -----
+    def export_subset(name, id_list, orientation_value, filename):
+        if id_list is None or len(id_list) == 0:
+            return
+        id_mask = df[ID_COL].astype(str).isin(id_list)
+        mask = id_mask & (orient == orientation_value)
+        subset = df.loc[mask, reason_col].dropna().astype(str).str.strip()
+        subset = subset[subset != ""]
+        print(f"\n=== {name} ===")
+        for r in subset:
+            print("-", r)
+        with open(filename, "w", encoding="utf-8") as f:
+            for r in subset:
+                f.write(r + "\n")
 
-# ---------- RUN ANALYSES ----------
+    # rouges
+    export_subset(
+        "Q14b UPWARDS reasons – rouge pipetters",
+        rouge_ids,
+        1,
+        "q14_upwards_reasons_rouge.txt",
+    )
+    export_subset(
+        "Q14b DOWNWARDS reasons – rouge pipetters",
+        rouge_ids,
+        2,
+        "q14_downwards_reasons_rouge.txt",
+    )
+
+    # braves
+    export_subset(
+        "Q14b UPWARDS reasons – punch drinkers",
+        brave_ids,
+        1,
+        "q14_upwards_reasons_brave.txt",
+    )
+    export_subset(
+        "Q14b DOWNWARDS reasons – punch drinkers",
+        brave_ids,
+        2,
+        "q14_downwards_reasons_brave.txt",
+    )
+
+
+def plot_bathroom(df, col, title, filename=None):
+    option_labels = {
+        1: "*",
+        2: "**",
+        3: "***",
+        4: "****",
+        5: "*****",
+    }
+
+    plot_single_choice(
+        df=df,
+        col=col,
+        title=title,
+        option_labels=option_labels,
+        filename=filename,
+        as_percent=False,
+    )
+
+
+# ---------- RUN ANALYSES: PLOTS ----------
 
 # Q1: coffees / teas (numeric)
 plot_numeric_with_normal(
@@ -262,9 +528,7 @@ plot_likert(
     filename="q06_labeling.png",
 )
 
-# ---------- SINGLE CHOICE (1..N) ----------
-
-# Q7: crash response (1–4)
+# SINGLE CHOICE
 plot_single_choice(
     df,
     col="q07_crash_response",
@@ -278,7 +542,6 @@ plot_single_choice(
     filename="q07_crash.png",
 )
 
-# Q9: Christmas punch (1–2)
 plot_single_choice(
     df,
     col="q09_punch_water_bath",
@@ -290,7 +553,6 @@ plot_single_choice(
     filename="q09_punch.png",
 )
 
-# Q13: pretend to understand (1–3)
 plot_single_choice(
     df,
     col="q13_pretend_understand",
@@ -303,7 +565,6 @@ plot_single_choice(
     filename="q13_pretend.png",
 )
 
-# Q14a: tube lids orientation (1–2)
 plot_single_choice(
     df,
     col="q14_lids_orientation",
@@ -315,7 +576,6 @@ plot_single_choice(
     filename="q14_lids.png",
 )
 
-# Q16: reindeer ethics (1–2)
 plot_single_choice(
     df,
     col="q16_reindeer_ethics",
@@ -327,7 +587,6 @@ plot_single_choice(
     filename="q16_reindeer.png",
 )
 
-# Q18: true center of the institute (1–4)
 plot_single_choice(
     df,
     col="q18_true_center",
@@ -341,7 +600,6 @@ plot_single_choice(
     filename="q18_center.png",
 )
 
-# Q20: snacks at desk (1–2)
 plot_single_choice(
     df,
     col="q20_snacks_at_desk",
@@ -353,7 +611,6 @@ plot_single_choice(
     filename="q20_snacks.png",
 )
 
-# Q21: “quick meeting” expectations (1–4)
 plot_single_choice(
     df,
     col="q21_quick_meeting_expect",
@@ -367,14 +624,17 @@ plot_single_choice(
     filename="q21_meeting.png",
 )
 
-# ---------- Q14b: export reasons lists ----------
-
+# Q14b text split (global + tribes)
 export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why")
 
-# ---------- Q17: Bathroom star ratings (EXPORT TO TEXT) ----------
 
-def export_bathroom_ratings(df):
+# ---------- Q17: Bathroom star ratings (EXPORT TO TEXT + TRIBES) ----------
 
+def export_bathroom_ratings(df, id_list=None, suffix=""):
+    """
+    If id_list is provided, restrict to those IDs.
+    Suffix is added to the output file name.
+    """
     bathroom_cols = [
         "q17_bathroom_back_3rd",
         "q17_bathroom_front_3rd",
@@ -383,17 +643,25 @@ def export_bathroom_ratings(df):
         "q17_bathroom_1st",
     ]
 
+    if id_list is not None:
+        df_sub = df[df[ID_COL].astype(str).isin(id_list)].copy()
+        label = suffix.strip("_")
+        header_suffix = f" ({label})" if label else ""
+    else:
+        df_sub = df
+        header_suffix = ""
+
     lines = []
-    print("\n=== Bathroom Ratings Summary (Q17) ===")
+    print(f"\n=== Bathroom Ratings Summary (Q17){header_suffix} ===")
     print("Bathroom, Average rating, Number of reviews")
 
     for col in bathroom_cols:
-        if col not in df.columns:
+        if col not in df_sub.columns:
             print(f"{col}, NOT FOUND")
             lines.append(f"{col}, NOT FOUND\n")
             continue
 
-        vals = pd.to_numeric(df[col], errors="coerce").dropna()
+        vals = pd.to_numeric(df_sub[col], errors="coerce").dropna()
 
         if vals.empty:
             print(f"{col}, no ratings, 0")
@@ -406,11 +674,62 @@ def export_bathroom_ratings(df):
         print(f"{col}, {avg:.2f}, {count}")
         lines.append(f"{col}, {avg:.2f}, {count}\n")
 
-    # Write to file
-    with open("bathroom_ratings_summary.txt", "w", encoding="utf-8") as f:
+    outname = f"bathroom_ratings_summary{suffix}.txt"
+    with open(outname, "w", encoding="utf-8") as f:
         for line in lines:
             f.write(line)
 
-    print("\nBathroom ratings exported to bathroom_ratings_summary.txt")
+    print(f"\nBathroom ratings exported to {outname}")
 
+
+# all participants (original)
 export_bathroom_ratings(df)
+
+# rouges only
+export_bathroom_ratings(df, id_list=list(rouge_ids), suffix="_rouge")
+
+# punch drinkers only
+export_bathroom_ratings(df, id_list=list(brave_ids), suffix="_brave")
+
+# lids upwards only
+export_bathroom_ratings(df, id_list=list(lid_up_ids), suffix="_lid_up")
+
+# lids downwards only
+export_bathroom_ratings(df, id_list=list(lid_down_ids), suffix="_lid_down")
+
+# ---------- Q17 Bathrooms: plotted as single-choice 1–5 ----------
+
+plot_bathroom(
+    df,
+    col="q17_bathroom_back_3rd",
+    title="Bathroom rating: Back building, 3rd floor (Q17)",
+    filename="q17_bathroom_back_3rd.png",
+)
+
+plot_bathroom(
+    df,
+    col="q17_bathroom_front_3rd",
+    title="Bathroom rating: Front building, 3rd floor (Q17)",
+    filename="q17_bathroom_front_3rd.png",
+)
+
+plot_bathroom(
+    df,
+    col="q17_bathroom_old_2nd",
+    title="Bathroom rating: Old building, 2nd floor (Q17)",
+    filename="q17_bathroom_old_2nd.png",
+)
+
+plot_bathroom(
+    df,
+    col="q17_bathroom_new_2nd",
+    title="Bathroom rating: New building, 2nd floor (Q17)",
+    filename="q17_bathroom_new_2nd.png",
+)
+
+plot_bathroom(
+    df,
+    col="q17_bathroom_1st",
+    title="Bathroom rating: 1st floor (Q17)",
+    filename="q17_bathroom_1st.png",
+)
