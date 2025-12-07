@@ -97,42 +97,51 @@ def plot_likert(df, col, title, filename=None, as_percent=True):
 
     plt.show()
 
-# ---------- TYPE 3: SINGLE CHOICE ----------
+
+# ---------- TYPE 3: SINGLE CHOICE (1..N coded) ----------
 
 def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=True):
     """
     df: dataframe
-    col: column name in df
+    col: column name in df (values encoded as 1..N integers)
     title: plot title
-    option_labels: dict mapping codes -> labels
-                   order of keys = order on x-axis!
-                   e.g. {"A": "Panic & pray", "B": "Stare 30s", ...}
+    option_labels: dict mapping int -> label
+                   e.g. {1: "Panic & pray", 2: "Stare 30 s", ...}
+                   keys define the category range and order.
     """
-    values = df[col].dropna().astype(str)
+    values = df[col].dropna().astype(int)
     if values.empty:
         print(f"No data for {col}")
         return
 
-    # Count occurrences
-    counts = values.value_counts()
+    # Categories are 1..max_key, even if some weren't chosen
+    categories = sorted(option_labels.keys())
+    max_cat = max(categories)
+    full_range = list(range(1, max_cat + 1))
 
-    # Respect the order in option_labels
-    expected_opts = list(option_labels.keys())
-    counts = counts.reindex(expected_opts, fill_value=0)
+    # Count occurrences and ensure all categories exist
+    counts = values.value_counts()
+    counts = counts.reindex(full_range, fill_value=0)
+
+    total = counts.sum()
+    if total == 0:
+        print(f"No valid responses for {col}, saw values: {sorted(values.unique())}")
+        return
 
     if as_percent:
-        counts_plot = counts / counts.sum() * 100
+        counts_plot = counts / total * 100
         ylabel = "Percentage of people"
     else:
         counts_plot = counts
         ylabel = "Number of people"
 
-    x = np.arange(len(expected_opts))
+    x = np.arange(len(full_range))
 
     plt.figure(figsize=(7, 4))
     plt.bar(x, counts_plot.values, edgecolor="black", alpha=0.8)
 
-    tick_labels = [option_labels[o] for o in expected_opts]
+    # Use labels from option_labels; if something is missing, fall back to the number
+    tick_labels = [option_labels.get(cat, str(cat)) for cat in full_range]
     plt.xticks(x, tick_labels)
 
     plt.ylabel(ylabel)
@@ -145,9 +154,59 @@ def plot_single_choice(df, col, title, option_labels, filename=None, as_percent=
     plt.show()
 
 
+# ---------- Q14b: SPLIT TEXT REASONS BY ORIENTATION ----------
+
+def export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why"):
+    """
+    Splits Q14 'Why?' answers into two lists:
+    - orientation == 1 -> upwards reasons
+    - orientation == 2 -> downwards reasons
+
+    Prints them to the console and also writes two text files:
+    - q14_upwards_reasons.txt
+    - q14_downwards_reasons.txt
+    """
+    if orientation_col not in df.columns or reason_col not in df.columns:
+        print("Q14 columns not found in dataframe.")
+        return
+
+    # Make sure orientation is numeric
+    orient = pd.to_numeric(df[orientation_col], errors="coerce")
+
+    # Upwards = 1
+    up_mask = orient == 1
+    upwards_reasons = df.loc[up_mask, reason_col].dropna().astype(str).str.strip()
+    upwards_reasons = upwards_reasons[upwards_reasons != ""]
+
+    # Downwards = 2
+    down_mask = orient == 2
+    downwards_reasons = df.loc[down_mask, reason_col].dropna().astype(str).str.strip()
+    downwards_reasons = downwards_reasons[downwards_reasons != ""]
+
+    # Print to console for easy copy-paste
+    print("\n=== Q14b: Reasons for opening UPWARDS (orientation == 1) ===")
+    for r in upwards_reasons:
+        print("-", r)
+
+    print("\n=== Q14b: Reasons for opening DOWNWARDS (orientation == 2) ===")
+    for r in downwards_reasons:
+        print("-", r)
+
+    # Also write to text files (optional but handy)
+    with open("q14_upwards_reasons.txt", "w", encoding="utf-8") as f:
+        for r in upwards_reasons:
+            f.write(r + "\n")
+
+    with open("q14_downwards_reasons.txt", "w", encoding="utf-8") as f:
+        for r in downwards_reasons:
+            f.write(r + "\n")
+
+    print("\nQ14b reasons exported to q14_upwards_reasons.txt and q14_downwards_reasons.txt")
+
+
 # ---------- RUN ANALYSES ----------
 
-# Q1: coffees / teas
+# Q1: coffees / teas (numeric)
 plot_numeric_with_normal(
     df,
     col="q01_coffee",
@@ -157,7 +216,7 @@ plot_numeric_with_normal(
     filename="q01_coffee.png",
 )
 
-# Q12: browser tabs
+# Q12: browser tabs (numeric)
 plot_numeric_with_normal(
     df,
     col="q12_tabs_open",
@@ -167,7 +226,7 @@ plot_numeric_with_normal(
     filename="q12_tabs.png",
 )
 
-# Q2–Q6: agreement scale
+# Q2–Q6: agreement scale (Likert)
 plot_likert(
     df,
     col="q02_whisper",
@@ -203,86 +262,155 @@ plot_likert(
     filename="q06_labeling.png",
 )
 
+# ---------- SINGLE CHOICE (1..N) ----------
+
+# Q7: crash response (1–4)
 plot_single_choice(
     df,
     col="q07_crash_response",
     title="Your computer crashes mid-analysis (Q7)",
     option_labels={
-        "A": "Panic & pray",
-        "B": "Stare 30 s",
-        "C": "Reboot, lose faith",
-        "D": "Call “Uweeee!”",
+        1: "Panic & pray",
+        2: "Stare 30 s",
+        3: "Reboot, lose faith",
+        4: "Call “Uweeee!”",
     },
     filename="q07_crash.png",
 )
 
+# Q9: Christmas punch (1–2)
 plot_single_choice(
     df,
     col="q09_punch_water_bath",
     title="Would you drink punch heated in the water bath? (Q9)",
     option_labels={
-        "yes": "Yes",
-        "no": "No",
+        1: "Yes",
+        2: "No",
     },
     filename="q09_punch.png",
 )
 
+# Q13: pretend to understand (1–3)
 plot_single_choice(
     df,
     col="q13_pretend_understand",
     title="Do you pretend to understand colleagues' methods? (Q13)",
     option_labels={
-        "yes": "Yes",
-        "no": "No",
-        "always": "Always",
+        1: "Yes",
+        2: "No",
+        3: "Always",
     },
     filename="q13_pretend.png",
 )
 
+# Q14a: tube lids orientation (1–2)
+plot_single_choice(
+    df,
+    col="q14_lids_orientation",
+    title="Tube lids orientation (Q14a)",
+    option_labels={
+        1: "Opening upwards",
+        2: "Opening downwards",
+    },
+    filename="q14_lids.png",
+)
+
+# Q16: reindeer ethics (1–2)
 plot_single_choice(
     df,
     col="q16_reindeer_ethics",
     title="Would Santa's reindeer pass animal ethics approval? (Q16)",
     option_labels={
-        "yes": "Yes",
-        "no": "No",
+        1: "Yes",
+        2: "No",
     },
     filename="q16_reindeer.png",
 )
 
+# Q18: true center of the institute (1–4)
 plot_single_choice(
     df,
     col="q18_true_center",
     title="Where is the true center of the institute? (Q18)",
     option_labels={
-        "A": "Lunch room",
-        "B": "Christian's office",
-        "C": "Cell culture lab",
-        "D": "Animal housing",
+        1: "Lunch room",
+        2: "Christian's office",
+        3: "Cell culture lab",
+        4: "Animal housing",
     },
     filename="q18_center.png",
 )
 
+# Q20: snacks at desk (1–2)
 plot_single_choice(
     df,
     col="q20_snacks_at_desk",
     title="Do you keep snacks at your desk? (Q20)",
     option_labels={
-        "yes": "Yes",
-        "no": "No",
+        1: "Yes",
+        2: "No",
     },
     filename="q20_snacks.png",
 )
 
+# Q21: “quick meeting” expectations (1–4)
 plot_single_choice(
     df,
     col="q21_quick_meeting_expect",
     title='When your PI says "quick meeting"... (Q21)',
     option_labels={
-        "A": "5 minutes",
-        "B": "20 minutes",
-        "C": "1 hour",
-        "D": "Career\nreevaluation",
+        1: "5 minutes",
+        2: "20 minutes",
+        3: "1 hour",
+        4: "Career\nreeevaluation",
     },
     filename="q21_meeting.png",
 )
+
+# ---------- Q14b: export reasons lists ----------
+
+export_q14_reasons(df, orientation_col="q14_lids_orientation", reason_col="q14_why")
+
+# ---------- Q17: Bathroom star ratings (EXPORT TO TEXT) ----------
+
+def export_bathroom_ratings(df):
+
+    bathroom_cols = [
+        "q17_bathroom_back_3rd",
+        "q17_bathroom_front_3rd",
+        "q17_bathroom_old_2nd",
+        "q17_bathroom_new_2nd",
+        "q17_bathroom_1st",
+    ]
+
+    lines = []
+    print("\n=== Bathroom Ratings Summary (Q17) ===")
+    print("Bathroom, Average rating, Number of reviews")
+
+    for col in bathroom_cols:
+        if col not in df.columns:
+            print(f"{col}, NOT FOUND")
+            lines.append(f"{col}, NOT FOUND\n")
+            continue
+
+        vals = pd.to_numeric(df[col], errors="coerce").dropna()
+
+        if vals.empty:
+            print(f"{col}, no ratings, 0")
+            lines.append(f"{col}, no ratings, 0\n")
+            continue
+
+        avg = vals.mean()
+        count = len(vals)
+
+        print(f"{col}, {avg:.2f}, {count}")
+        lines.append(f"{col}, {avg:.2f}, {count}\n")
+
+    # Write to file
+    with open("bathroom_ratings_summary.txt", "w", encoding="utf-8") as f:
+        for line in lines:
+            f.write(line)
+
+    print("\nBathroom ratings exported to bathroom_ratings_summary.txt")
+
+export_bathroom_ratings(df)
